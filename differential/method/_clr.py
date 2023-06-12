@@ -111,10 +111,10 @@ def clr_paired_ttest(table : pd.DataFrame, metadata : pd.DataFrame,
                          'reject' : reject})
 
 
-def clr_lmer(table : biom.Table, metadata : Metadata,
+def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
              subject : str,
              formula : str, re_formula : str = None,
-             n_jobs : int = None, bootstrap : int = 1) -> pd.DataFrame:
+             n_jobs : int = None, bootstraps : int = 1) -> pd.DataFrame:
     """ Run a linear mixed effects model on a table
 
     Parameters
@@ -134,20 +134,23 @@ def clr_lmer(table : biom.Table, metadata : Metadata,
     bootstrap : int, optional
         The number of bootstrap iterations to run
     """
-    metadata = metadata.to_dataframe()
+    if not isinstance(metadata, pd.DataFrame):
+        # Q2 WTF!
+        metadata = metadata.to_dataframe()
+
     clean_table = clr_transform(table)
+
     common_ids = clean_table.index.intersection(metadata.index)
     if (len(common_ids) < len(metadata) or
         len(common_ids) < len(clean_table)):
         print("Warning: not all metadata IDs are in the table")
-    # Check to make sure spaces aren't in the clean_table columns
 
+    # Check to make sure spaces aren't in the clean_table columns
     def check_column_names(df):
         for column in df.columns:
             if ' ' in column or ':' in column:
                 return False
         return True
-
     if not check_column_names(clean_table):
         raise ValueError("Feature names cannot contain spaces or colons")
 
@@ -158,22 +161,21 @@ def clr_lmer(table : biom.Table, metadata : Metadata,
     model = mixedlm(table=clean_table,
                     metadata=metadata,
                     formula=formula,
-                    groups=subject_column,
+                    groups=subject,
                     re_formula=re_formula)
     model.fit(n_jobs=n_jobs)
     res = model.summary()
-
-    if bootstrap > 1:
+    if bootstraps > 1:
         res['bootstrap'] = 0
         summaries = [res]
-        for i in np.arange(1, bootstrap):
+        for i in np.arange(1, bootstraps):
             prior = np.random.dirichlet(np.ones(table.shape[0]),
                                         size=table.shape[0])
             clean_table = clr_transform(table, pseudo=prior)
-            model = mixedlm(table=clean_table.loc[metadata.index],
+            model = mixedlm(table=clean_table,
                             metadata=metadata,
                             formula=formula,
-                            groups=subject_column,
+                            groups=subject,
                             re_formula=re_formula)
             model.fit(n_jobs=n_jobs)
             res = model.summary()

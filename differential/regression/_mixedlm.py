@@ -6,6 +6,7 @@
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
 from collections import OrderedDict
+import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 from ._model import RegressionModel
@@ -13,6 +14,7 @@ from differential.util import _type_cast_to_float
 from statsmodels.iolib.summary2 import Summary
 from statsmodels.stats.multitest import multipletests
 from joblib import Parallel, delayed
+from patsy import dmatrix
 
 
 def mixedlm(formula, table, metadata, groups, **kwargs):
@@ -127,17 +129,20 @@ def mixedlm(formula, table, metadata, groups, **kwargs):
                           "the sample names between `metadata` and `table` "
                           "are consistent"))
     submodels = []
+    design_matrix = dmatrix(formula, metadata, return_type='dataframe')
+
     for b in table.columns:
         # mixed effects code is obtained here:
         # http://stackoverflow.com/a/22439820/1167475
         stats_formula = '%s ~ %s' % (b, formula)
+
         mdf = smf.mixedlm(stats_formula, data=data,
                           groups=data[groups],
                           **kwargs)
         submodels.append(mdf)
 
     # ugly hack to get around the statsmodels object
-    model = LMEModel(Y=table, Xs=None)
+    model = LMEModel(Y=table, Xs=design_matrix)
     model.submodels = submodels
     model.features = table
     return model
@@ -173,7 +178,7 @@ class LMEModel(RegressionModel):
             self.results = Parallel(n_jobs=n_jobs)(delayed(s.fit)(**kwargs)
                                                    for s in self.submodels)
 
-    def summary(self, varname : str) -> pd.DataFrame:
+    def summary(self) -> pd.DataFrame:
         """ Summarize the results of the linear mixed effects model.
 
         Parameters
