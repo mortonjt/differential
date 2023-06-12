@@ -151,3 +151,59 @@ def clr_lmer(table : pd.DataFrame, metadata : pd.DataFrame,
         'converge': converged
     }, index=table.columns)
     return res
+
+
+def clr_lmer(table : pd.DataFrame, metadata : pd.DataFrame,
+             treatment : str, subject_column : str,
+             slope=False):
+    clean_table = table.copy()
+    clean_table.columns = [f'X{i}' for i in np.arange(table.shape[1])]
+
+    if slope:
+        model = mixedlm(table=clean_table.loc[metadata.index], metadata=metadata,
+                        formula=treatment, groups=subject_column,
+                        re_formula=treatment)
+    else:
+        model = mixedlm(table=clean_table.loc[metadata.index], metadata=metadata,
+                        formula=treatment, groups=subject_column)
+
+    model.fit()
+    return model
+
+def clr_lme_summary(model, var_name, ids):
+
+    mr = np.arange(len(model.results))
+    converged = [model.results[i].summary().tables[0].iloc[4, 3] for i in mr]
+
+    coef = np.array(
+        [model.results[i].summary().tables[1].loc[var_name]['Coef.'] for i in mr]
+    ).astype(np.float32)
+    pval = [model.results[i].summary().tables[1].loc[var_name]['P>|z|'] for i in mr]
+    pval = [None if element == '' else element for element in pval]
+    pval = np.array(pval).astype(np.float32)
+
+    ci_5 = [model.results[i].summary().tables[1].loc[var_name]['[0.025'] for i in mr]
+    ci_5 = [None if element == '' else element for element in ci_5]
+    ci_5 = np.array(ci_5).astype(np.float32)
+
+    ci_95 = [model.results[i].summary().tables[1].loc[var_name]['0.975]'] for i in mr]
+    ci_95 = [None if element == '' else element for element in ci_95]
+    ci_95 = np.array(ci_95).astype(np.float32)
+
+    log2_fold_change = coef / np.log(2)
+    logp = np.log10(pval)
+
+    res = multipletests(pval)
+    qval = res[1]
+    reject = res[0]
+
+    res = pd.DataFrame({
+        'log2_fold_change': coef,
+        'pval': pval, 'qval': qval,
+        '-log10(pval)' : -logp,
+        'ci_2.5': ci_5,
+        'ci_97.5': ci_95,
+        'reject' : reject,
+        'converge': converged
+    }, index=ids)
+    return res
