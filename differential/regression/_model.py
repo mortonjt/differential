@@ -33,10 +33,10 @@ class Model(metaclass=abc.ABCMeta):
     def fit(self, **kwargs):
         pass
 
-    @abc.abstractmethod
-    def summary(self):
-        """ Print summary results """
-        pass
+    # @abc.abstractmethod
+    # def summary(self):
+    #     """ Print summary results """
+    #     pass
 
     def percent_explained(self):
         """ Proportion explained by each principal balance."""
@@ -143,46 +143,3 @@ class RegressionModel(Model):
                                 index=resid.index)
         else:
             return resid
-
-    @abc.abstractmethod
-    def predict(self, X=None, tree=None, **kwargs):
-        """ Performs a prediction based on model.
-
-        Parameters
-        ----------
-        X : pd.DataFrame, optional
-            Input table of covariates, where columns are covariates, and
-            rows are samples.  If not specified, then the fitted values
-            calculated from training the model will be returned.
-        tree : skbio.TreeNode, optional
-            The tree used to perform the ilr transformation.  If this
-            is specified, then the prediction will be represented
-            as proportions. Otherwise, if this is not specified,
-            the prediction will be represented as balances. (default: None).
-        **kwargs : dict
-            Other arguments to be passed into the model prediction.
-
-        Returns
-        -------
-        pd.DataFrame
-            A table of predicted values where rows are covariates,
-            and the columns are balances. If `tree` is specified, then
-            the columns are proportions.
-
-        """
-        if not self._fitted:
-            ValueError(('Model not fitted - coefficients not calculated.'
-                        'See `fit()`'))
-        if X is None:
-            X = self.design_matrices
-
-        prediction = X.dot(self._beta)
-        if tree is not None:
-            basis, _ = balance_basis(tree)
-            proj_prediction = ilr_inv(prediction.values, basis=basis)
-            ids = [n.name for n in tree.tips()]
-            return pd.DataFrame(proj_prediction,
-                                columns=ids,
-                                index=prediction.index)
-        else:
-            return prediction
