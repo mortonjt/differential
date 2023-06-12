@@ -148,7 +148,7 @@ def clr_lmer(table : biom.Table, metadata : Metadata,
                 return False
         return True
 
-    if not check_column_names(df):
+    if not check_column_names(clean_table):
         raise ValueError("Feature names cannot contain spaces or colons")
 
 
@@ -167,8 +167,8 @@ def clr_lmer(table : biom.Table, metadata : Metadata,
         res['bootstrap'] = 0
         summaries = [res]
         for i in np.arange(1, bootstrap):
-            prior = np.random.dirichlet(np.ones(table.shape[1]),
-                                        size=table.shape[1])
+            prior = np.random.dirichlet(np.ones(table.shape[0]),
+                                        size=table.shape[0])
             clean_table = clr_transform(table, pseudo=prior)
             model = mixedlm(table=clean_table.loc[metadata.index],
                             metadata=metadata,
