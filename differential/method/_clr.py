@@ -138,6 +138,18 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
     if (len(common_ids) < len(metadata) or
         len(common_ids) < len(clean_table)):
         print("Warning: not all metadata IDs are in the table")
+    # Check to make sure spaces aren't in the clean_table columns
+
+    def check_column_names(df):
+        for column in df.columns:
+            if ' ' in column or ':' in column:
+            return False
+        return True
+
+    if not check_column_names(df):
+        raise ValueError("Feature names cannot contain spaces or colons")
+
+
     metadata = metadata.loc[common_ids]
     clean_table = clean_table.loc[common_ids]
 
