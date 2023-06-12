@@ -35,9 +35,13 @@ setup(name='differential',
           'scipy',
           'pandas',
           'biom-format',
-          'click'
+          'click',
+          'pydeseq2'
       ],
       classifiers=classifiers,
       package_data={},
-      scripts=glob('scripts/*')
+      scripts=glob('scripts/*'),
+      entry_points={
+          'qiime2.plugins': ['q2-differential=differential.plugin_setup:plugin']
+      },
 )

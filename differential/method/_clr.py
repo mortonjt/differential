@@ -41,8 +41,8 @@ def _welch_ttest(x1, x2):
     ub = delta + t.ppf(0.975,df)*pooled_se
 
     return pd.DataFrame(np.array([tstat,df,p,delta,lb,ub]).reshape(1,-1),
-                         columns=['T statistic','df','pvalue','Difference',
-                                  'ci_2.5','ci_97.5'])
+                        columns=['T statistic','df','pvalue','Difference',
+                                 'ci_2.5','ci_97.5'])
 
 def clr_ttest(table : pd.DataFrame, metadata : pd.DataFrame,
               treatment_column : str, trt_1 : str, trt_2 : str):
@@ -113,7 +113,7 @@ def clr_paired_ttest(table : pd.DataFrame, metadata : pd.DataFrame,
 def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
              subject_column : str,
              formula : str, re_formula : str = None,
-             n_jobs=None, bootstrap=1):
+             n_jobs : int = None, bootstrap : int = 1) -> pd.DataFrame:
     """ Run a linear mixed effects model on a table
 
     Parameters
@@ -143,7 +143,7 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
     def check_column_names(df):
         for column in df.columns:
             if ' ' in column or ':' in column:
-            return False
+                return False
         return True
 
     if not check_column_names(df):
