@@ -8,6 +8,7 @@ from statsmodels.stats.multitest import multipletests
 from scipy.stats import ttest_rel, ttest_ind
 from scipy.stats import t
 from scipy.sparse.linalg import svds
+from qiime2.plugin import Metadata
 
 
 def clr_transform(table : biom.Table, pseudo=1):
@@ -110,7 +111,7 @@ def clr_paired_ttest(table : pd.DataFrame, metadata : pd.DataFrame,
                          'reject' : reject})
 
 
-def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
+def clr_lmer(table : biom.Table, metadata : Metadata,
              subject : str,
              formula : str, re_formula : str = None,
              n_jobs : int = None, bootstrap : int = 1) -> pd.DataFrame:
@@ -133,6 +134,7 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
     bootstrap : int, optional
         The number of bootstrap iterations to run
     """
+    metadata = metadata.to_dataframe()
     clean_table = clr_transform(table)
     common_ids = clean_table.index.intersection(metadata.index)
     if (len(common_ids) < len(metadata) or
