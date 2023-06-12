@@ -134,8 +134,14 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
         The number of bootstrap iterations to run
     """
     clean_table = clr_transform(table)
-    clean_table.columns = [f'X{i}' for i in np.arange(table.shape[1])]
-    model = mixedlm(table=clean_table.loc[metadata.index],
+    common_ids = clean_table.index.intersection(metadata.index)
+    if (len(common_ids) < len(metadata) or
+        len(common_ids) < len(clean_table)):
+        print("Warning: not all metadata IDs are in the table")
+    metadata = metadata.loc[common_ids]
+    clean_table = clean_table.loc[common_ids]
+
+    model = mixedlm(table=clean_table,
                     metadata=metadata,
                     formula=formula,
                     groups=subject_column,
