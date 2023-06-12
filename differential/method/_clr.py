@@ -154,14 +154,14 @@ def clr_lmer(table : pd.DataFrame, metadata : pd.DataFrame,
 
 
 def clr_lmer(table : pd.DataFrame, metadata : pd.DataFrame,
-             treatment : str, subject_column : str,
+             treatment : str, subject_column : str, time_column : str = None,
              slope=False):
     clean_table = table.copy()
     clean_table.columns = [f'X{i}' for i in np.arange(table.shape[1])]
 
     if slope:
         model = mixedlm(table=clean_table.loc[metadata.index], metadata=metadata,
-                        formula=treatment, groups=subject_column,
+                        formula=f'{treatment} + {time}', groups=subject_column,
                         re_formula=treatment)
     else:
         model = mixedlm(table=clean_table.loc[metadata.index], metadata=metadata,
