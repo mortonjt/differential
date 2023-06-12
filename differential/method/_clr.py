@@ -160,9 +160,15 @@ def clr_lmer(table : pd.DataFrame, metadata : pd.DataFrame,
     clean_table.columns = [f'X{i}' for i in np.arange(table.shape[1])]
 
     if slope:
-        model = mixedlm(table=clean_table.loc[metadata.index], metadata=metadata,
-                        formula=f'{treatment} + {time}', groups=subject_column,
-                        re_formula=treatment)
+        # the way to think about this is that the fixed effects
+        # are treated as a global model, and
+        # the random effects are treated as a local model
+        # for each subject
+        model = mixedlm(table=clean_table.loc[metadata.index],
+                        metadata=metadata,
+                        formula=f'{treatment} + {time_column}',
+                        groups=subject_column,
+                        re_formula=f'{treatment} + {time_column}')
     else:
         model = mixedlm(table=clean_table.loc[metadata.index], metadata=metadata,
                         formula=treatment, groups=subject_column)
