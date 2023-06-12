@@ -33,10 +33,10 @@ class Model(metaclass=abc.ABCMeta):
     def fit(self, **kwargs):
         pass
 
-    # @abc.abstractmethod
-    # def summary(self):
-    #     """ Print summary results """
-    #     pass
+    @abc.abstractmethod
+    def summary(self):
+        """ Print summary results """
+        pass
 
     def percent_explained(self):
         """ Proportion explained by each principal balance."""

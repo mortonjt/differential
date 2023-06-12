@@ -110,106 +110,55 @@ def clr_paired_ttest(table : pd.DataFrame, metadata : pd.DataFrame,
                          'reject' : reject})
 
 
-def clr_lmer(table : pd.DataFrame, metadata : pd.DataFrame,
-             treatment : str, subject_column : str):
-    table = clr_transform(table)
-    clean_table = table.copy()
+def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
+             subject_column : str,
+             formula : str, re_formula : str = None,
+             n_jobs=None, bootstrap=1):
+    """ Run a linear mixed effects model on a table
+
+    Parameters
+    ----------
+    table : biom.Table
+        The table to run the model on
+    metadata : pd.DataFrame
+        The metadata to use for the model
+    subject_column : str
+        The column in the metadata that contains the subject IDs
+    formula : str
+        The formula to use for the model
+    re_formula : str, optional
+        The formula to use for the random effects
+    n_jobs : int, optional
+        The number of jobs to use for the model
+    bootstrap : int, optional
+        The number of bootstrap iterations to run
+    """
+    clean_table = clr_transform(table)
     clean_table.columns = [f'X{i}' for i in np.arange(table.shape[1])]
+    model = mixedlm(table=clean_table.loc[metadata.index],
+                    metadata=metadata,
+                    formula=formula,
+                    groups=subject_column,
+                    re_formula=re_formula)
+    model.fit(n_jobs=n_jobs)
+    res = model.summary()
 
-    model = mixedlm(table=clean_table.loc[metadata.index], metadata=metadata,
-                    formula=treatment, groups=subject_column)
-    model.fit()
+    if bootstrap > 1:
+        res['bootstrap'] = 0
+        summaries = [res]
+        for i in np.arange(1, bootstrap):
+            prior = np.random.dirichlet(np.ones(table.shape[1]),
+                                        size=table.shape[1])
+            clean_table = clr_transform(table, pseudo=prior)
+            model = mixedlm(table=clean_table.loc[metadata.index],
+                            metadata=metadata,
+                            formula=formula,
+                            groups=subject_column,
+                            re_formula=re_formula)
+            model.fit(n_jobs=n_jobs)
+            res = model.summary()
+            res['bootstrap'] = i
+            summaries.append(res)
+        res = pd.concat(summaries, axis=0)
 
-    mr = np.arange(len(model.results))
-    converged = [model.results[i].summary().tables[0].iloc[4, 3] for i in mr]
-
-    coef = np.array(
-        [model.results[i].summary().tables[1].iloc[1]['Coef.'] for i in mr]
-    ).astype(np.float32)
-    pval = np.array(
-        [model.results[i].summary().tables[1].iloc[1]['P>|z|'] for i in mr]
-    ).astype(np.float32)
-    ci_5 = np.array(
-        [model.results[i].summary().tables[1].iloc[1]['[0.025'] for i in mr]
-    ).astype(np.float32)
-    ci_95 = np.array(
-        [model.results[i].summary().tables[1].iloc[1]['0.975]'] for i in mr]
-    ).astype(np.float32)
-
-    log2_fold_change = coef / np.log(2)
-
-    res = multipletests(pval)
-    qval = res[1]
-    reject = res[0]
-
-    res = pd.DataFrame({
-        'log2_fold_change': coef,
-        'pval': pval, 'qval': qval,
-        'ci_2.5': ci_5,
-        'ci_97.5': ci_95,
-        'reject' : reject,
-        'converge': converged
-    }, index=table.columns)
-    return res
-
-
-def clr_lmer(table : pd.DataFrame, metadata : pd.DataFrame,
-             treatment : str, subject_column : str, time_column : str = None,
-             slope=False):
-    clean_table = table.copy()
-    clean_table.columns = [f'X{i}' for i in np.arange(table.shape[1])]
-
-    if slope:
-        # the way to think about this is that the fixed effects
-        # are treated as a global model, and
-        # the random effects are treated as a local model
-        # for each subject
-        model = mixedlm(table=clean_table.loc[metadata.index],
-                        metadata=metadata,
-                        formula=f'{treatment} + {time_column}',
-                        groups=subject_column,
-                        re_formula=f'{treatment} + {time_column}')
-    else:
-        model = mixedlm(table=clean_table.loc[metadata.index], metadata=metadata,
-                        formula=treatment, groups=subject_column)
-
-    model.fit()
-    return model
-
-def clr_lme_summary(model, var_name, ids):
-
-    mr = np.arange(len(model.results))
-    converged = [model.results[i].summary().tables[0].iloc[4, 3] for i in mr]
-
-    coef = np.array(
-        [model.results[i].summary().tables[1].loc[var_name]['Coef.'] for i in mr]
-    ).astype(np.float32)
-    pval = [model.results[i].summary().tables[1].loc[var_name]['P>|z|'] for i in mr]
-    pval = [None if element == '' else element for element in pval]
-    pval = np.array(pval).astype(np.float32)
-
-    ci_5 = [model.results[i].summary().tables[1].loc[var_name]['[0.025'] for i in mr]
-    ci_5 = [None if element == '' else element for element in ci_5]
-    ci_5 = np.array(ci_5).astype(np.float32)
-
-    ci_95 = [model.results[i].summary().tables[1].loc[var_name]['0.975]'] for i in mr]
-    ci_95 = [None if element == '' else element for element in ci_95]
-    ci_95 = np.array(ci_95).astype(np.float32)
-
-    log2_fold_change = coef / np.log(2)
-    logp = np.log10(pval)
-
-    res = multipletests(pval)
-    qval = res[1]
-    reject = res[0]
-
-    res = pd.DataFrame({
-        'log2_fold_change': coef,
-        'pval': pval, 'qval': qval,
-        '-log10(pval)' : -logp,
-        'ci_2.5': ci_5,
-        'ci_97.5': ci_95,
-        'reject' : reject,
-        'converge': converged
-    }, index=ids)
     return res

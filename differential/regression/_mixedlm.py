@@ -11,6 +11,9 @@ import statsmodels.formula.api as smf
 from ._model import RegressionModel
 from differential.util import _type_cast_to_float
 from statsmodels.iolib.summary2 import Summary
+from statsmodels.stats.multitest import multipletests
+from joblib import Parallel, delayed
+from typing import List, Str
 
 
 def mixedlm(formula, table, metadata, groups, **kwargs):
@@ -21,14 +24,14 @@ def mixedlm(formula, table, metadata, groups, **kwargs):
     LME models are commonly used for repeated measures, where multiple
     samples are collected from a single source.  This implementation is
     focused on performing a multivariate response regression with mixed
-    effects where the response is a matrix of balances (`table`), the
+    effects where the response is a matrix of features (`table`), the
     covariates (`metadata`) are made up of external variables and the
     samples sources are specified by `groups`.
 
     T-statistics (`tvalues`) and p-values (`pvalues`) can be obtained to
     investigate to evaluate statistical significance for a covariate for a
     given balance.  Predictions on the resulting model can be made using
-    (`predict`), and these results can be interpreted as either balances or
+    (`predict`), and these results can be interpreted as either features or
     proportions.
 
     Parameters
@@ -38,10 +41,10 @@ def mixedlm(formula, table, metadata, groups, **kwargs):
         These strings are similar to how equations are handled in R.
         Note that the dependent variable in this string should not be
         specified, since this method will be run on each of the individual
-        balances. See `patsy` [1]_ for more details.
+        features. See `patsy` [1]_ for more details.
     table : pd.DataFrame
         Contingency table where samples correspond to rows and
-        balances correspond to columns.
+        features correspond to columns.
     metadata: pd.DataFrame
         Metadata table that contains information about the samples contained
         in the `table` object.  Samples correspond to rows and covariates
@@ -71,7 +74,7 @@ def mixedlm(formula, table, metadata, groups, **kwargs):
     >>> import numpy as np
     >>> from differential.regression import mixedlm
 
-    Here, we will define a table of balances with features `Y1`, `Y2`
+    Here, we will define a table of features with features `Y1`, `Y2`
     across 12 samples.
 
     >>> table = pd.DataFrame({
@@ -102,12 +105,12 @@ def mixedlm(formula, table, metadata, groups, **kwargs):
     ...     }, index=['x1', 'x2', 'x3', 'y1', 'y2', 'y3',
     ...               'z1', 'z2', 'z3', 'u1', 'u2', 'u3'])
 
-    Now we can run the linear mixed effects model on the balances.
-    Underneath the hood, the proportions will be transformed into balances,
-    so that the linear mixed effects models can be run directly on balances.
+    Now we can run the linear mixed effects model on the features.
+    Underneath the hood, the proportions will be transformed into features,
+    so that the linear mixed effects models can be run directly on features.
     Since each patient was sampled repeatedly, we'll specify them separately
     in the groups.  In the linear mixed effects model `time` and `treatment`
-    will be simultaneously tested for with respect to the balances.
+    will be simultaneously tested for with respect to the features.
 
     >>> res = mixedlm('time + treatment', table, metadata,
     ...               groups='patient')
@@ -137,7 +140,7 @@ def mixedlm(formula, table, metadata, groups, **kwargs):
     # ugly hack to get around the statsmodels object
     model = LMEModel(Y=table, Xs=None)
     model.submodels = submodels
-    model.balances = table
+    model.features = table
     return model
 
 
@@ -145,7 +148,7 @@ class LMEModel(RegressionModel):
     """ Summary object for storing linear mixed effects results.
 
     A `LMEModel` object stores information about the
-    individual balances used in the regression, the coefficients,
+    individual features used in the regression, the coefficients,
     residuals. This object can be used to perform predictions.
     In addition, summary statistics such as the coefficient
     of determination for the overall fit can be calculated.
@@ -154,27 +157,79 @@ class LMEModel(RegressionModel):
     Attributes
     ----------
     Y : pd.DataFrame
-        A table of balances where samples are rows and
-        balances are columns. These balances were calculated
-        using `tree`.
+        A table of abundances where samples are rows and
+        features are columns.
     Xs : pd.DataFrame
         Design matrix.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def fit(self, **kwargs):
+    def fit(self, n_jobs=None, **kwargs):
         """ Fit the model """
         # assumes that the underlying submodels have implemented `fit`.
-        # TODO: Add regularized fit
-        self.results = [s.fit(**kwargs) for s in self.submodels]
+        if None:
+            self.results = [s.fit(**kwargs) for s in self.submodels]
+        else:
+            self.results = Parallel(n_jobs=n_jobs)(delayed(s.fit)(**kwargs)
+                                                   for s in self.submodels)
 
-    @property
-    def pvalues(self):
-        """ Return pvalues from each of the coefficients in the fit. """
-        pvals = pd.DataFrame()
-        for r in self.results:
-            p = r.pvalues
-            p.name = r.model.endog_names
-            pvals = pvals.append(p)
-        return pvals.T
+    def summary(self, varname : str) -> pd.DataFrame:
+        """ Summarize the results of the linear mixed effects model.
+
+        Parameters
+        ----------
+        varname : str
+            The name of the variable to summarize.
+
+        Returns
+        -------
+        pd.DataFrame
+            A summary table of the results.
+        """
+        def _summary(model, var_name):
+
+            ids = model.response_matrix.columns
+            mr = np.arange(len(model.results))
+            converged = [model.results[i].summary().tables[0].iloc[4, 3] for i in mr]
+
+            coef = np.array(
+                [model.results[i].summary().tables[1].loc[var_name]['Coef.'] for i in mr]
+            ).astype(np.float32)
+            pval = [model.results[i].summary().tables[1].loc[var_name]['P>|z|'] for i in mr]
+            pval = [None if element == '' else element for element in pval]
+            pval = np.array(pval).astype(np.float32)
+
+            ci_5 = [model.results[i].summary().tables[1].loc[var_name]['[0.025'] for i in mr]
+            ci_5 = [None if element == '' else element for element in ci_5]
+            ci_5 = np.array(ci_5).astype(np.float32)
+
+            ci_95 = [model.results[i].summary().tables[1].loc[var_name]['0.975]'] for i in mr]
+            ci_95 = [None if element == '' else element for element in ci_95]
+            ci_95 = np.array(ci_95).astype(np.float32)
+
+            log2_fold_change = coef / np.log(2)
+            logp = np.log10(pval)
+
+            res = multipletests(pval)
+            qval = res[1]
+            reject = res[0]
+
+            res = pd.DataFrame({
+                'log2_fold_change': coef,
+                'pval': pval, 'qval': qval,
+                '-log10(pval)' : -logp,
+                'ci_2.5': ci_5,
+                'ci_97.5': ci_95,
+                'reject' : reject,
+                'converge': converged
+            }, index=ids)
+            return res
+
+        varnames = self.design_matrix.columns
+        reeses = []
+        for v in varnames:
+            res = _summary(self, v)
+            res['Var'] = v
+            reeses.append(res)
+        return pd.concat(reeses, axis=0)
