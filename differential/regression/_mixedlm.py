@@ -13,7 +13,6 @@ from differential.util import _type_cast_to_float
 from statsmodels.iolib.summary2 import Summary
 from statsmodels.stats.multitest import multipletests
 from joblib import Parallel, delayed
-from typing import List, Str
 
 
 def mixedlm(formula, table, metadata, groups, **kwargs):

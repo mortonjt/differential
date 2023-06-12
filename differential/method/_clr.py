@@ -12,7 +12,7 @@ from scipy.sparse.linalg import svds
 
 def clr_transform(table : biom.Table, pseudo=1):
     table = table.to_dataframe().T
-    ctable = np.log(table + 1)
+    ctable = np.log(table + pseudo)
     ctable = ctable - ctable.mean(axis=1).values.reshape(-1, 1)
     return ctable
 
