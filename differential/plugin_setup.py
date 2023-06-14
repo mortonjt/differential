@@ -33,7 +33,7 @@ plugin.methods.register_function(
                 'formula': qiime2.plugin.Str,
                 're_formula': qiime2.plugin.Str,
                 'n_jobs': qiime2.plugin.Int,
-                'bootstrap': qiime2.plugin.Int},
+                'bootstraps': qiime2.plugin.Int},
     outputs=[('results', FeatureData[Differential])],
     name='clr_lmer',
     description=('Perform linear mixed effects analysis on a biom table with '
