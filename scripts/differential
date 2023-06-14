@@ -23,7 +23,7 @@ def clr_linear_mixed_effects(table, metadata, subject_column, formula, re_formul
                              n_jobs, bootstraps, output):
     # Read biom table and metadata
     table = biom.load_table(table)
-    metadata = pd.read_csv(metadata)
+    metadata = pd.read_csv(metadata, index_col=0, sep='\t')
 
     # Run clr_lmer
     result = clr_lmer(table=table, metadata=metadata, subject_column=subject_column,
