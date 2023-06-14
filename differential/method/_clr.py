@@ -131,7 +131,7 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
         The formula to use for the random effects
     n_jobs : int, optional
         The number of jobs to use for the model
-    bootstrap : int, optional
+    bootstraps : int, optional
         The number of bootstrap iterations to run
     """
     if not isinstance(metadata, pd.DataFrame):
