@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+
+import click
+import pandas as pd
+import biom
+from differential.method._clr import clr_lmer
+
+
+@click.group()
+def differential():
+    pass
+
+@differential.command()
+@click.option('--table', help='Path to biom table')
+@click.option('--metadata', help='Path to metadata CSV')
+@click.option('--subject-column', help='Column name in metadata containing subject IDs')
+@click.option('--formula', help='Formula for the model')
+@click.option('--re-formula', help='Formula for random effects (optional)')
+@click.option('--n-jobs', type=int, help='Number of jobs for the model (optional)')
+@click.option('--bootstraps', type=int, default=1, help='Number of bootstrap iterations (default: 1)')
+@click.option('--output', help='Path to output CSV file')
+def clr_linear_mixed_effects(table, metadata, subject_column, formula, re_formula, n_jobs, bootstraps, output):
+    # Read biom table and metadata
+    table = biom.load_table(table)
+    metadata = pd.read_csv(metadata)
+
+    # Run clr_lmer
+    result = clr_lmer(table=table, metadata=metadata, subject_column=subject_column,
+                      formula=formula, re_formula=re_formula,
+                      n_jobs=n_jobs, bootstraps=bootstraps)
+
+    # Save results to CSV
+    result.to_csv(output, index=False, sep='\t')
+
+
+if __name__ == "__main__":
+    differential()
