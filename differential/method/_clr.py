@@ -111,7 +111,7 @@ def clr_paired_ttest(table : pd.DataFrame, metadata : pd.DataFrame,
 
 
 def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
-             subject : str,
+             subject_column : str,
              formula : str, re_formula : str = None,
              n_jobs : int = None, bootstraps : int = 1) -> pd.DataFrame:
     """ Run a linear mixed effects model on a table
@@ -130,7 +130,7 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
         The formula to use for the random effects
     n_jobs : int, optional
         The number of jobs to use for the model
-    bootstrap : int, optional
+    bootstraps : int, optional
         The number of bootstrap iterations to run
     """
     if not isinstance(metadata, pd.DataFrame):
@@ -160,7 +160,7 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
     model = mixedlm(table=clean_table,
                     metadata=metadata,
                     formula=formula,
-                    groups=subject,
+                    groups=subject_column,
                     re_formula=re_formula)
     model.fit(n_jobs=n_jobs)
     res = model.summary()
@@ -174,7 +174,7 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
             model = mixedlm(table=clean_table,
                             metadata=metadata,
                             formula=formula,
-                            groups=subject,
+                            groups=subject_column,
                             re_formula=re_formula)
             model.fit(n_jobs=n_jobs)
             res = model.summary()
