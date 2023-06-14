@@ -8,7 +8,6 @@ from statsmodels.stats.multitest import multipletests
 from scipy.stats import ttest_rel, ttest_ind
 from scipy.stats import t
 from scipy.sparse.linalg import svds
-from qiime2.plugin import Metadata
 
 
 def clr_transform(table : biom.Table, pseudo=1):
