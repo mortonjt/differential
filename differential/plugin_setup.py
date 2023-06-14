@@ -29,7 +29,7 @@ plugin.methods.register_function(
     function=clr_lmer,
     inputs={'table': FeatureTable[Frequency]},
     parameters={'metadata': Metadata,
-                'subject': MetadataColumn[Categorical],
+                'subject': qiime2.plugin.Str,
                 'formula': qiime2.plugin.Str,
                 're_formula': qiime2.plugin.Str,
                 'n_jobs': qiime2.plugin.Int,
