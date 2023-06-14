@@ -19,7 +19,8 @@ def differential():
 @click.option('--n-jobs', type=int, help='Number of jobs for the model (optional)')
 @click.option('--bootstraps', type=int, default=1, help='Number of bootstrap iterations (default: 1)')
 @click.option('--output', help='Path to output CSV file')
-def clr_linear_mixed_effects(table, metadata, subject_column, formula, re_formula, n_jobs, bootstraps, output):
+def clr_linear_mixed_effects(table, metadata, subject_column, formula, re_formula,
+                             n_jobs, bootstraps, output):
     # Read biom table and metadata
     table = biom.load_table(table)
     metadata = pd.read_csv(metadata)
