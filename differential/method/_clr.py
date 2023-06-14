@@ -168,8 +168,8 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
         res['bootstrap'] = 0
         summaries = [res]
         for i in np.arange(1, bootstraps):
-            prior = np.random.dirichlet(np.ones(table.shape[0]),
-                                        size=table.shape[0])
+            prior = np.random.dirichlet(np.ones(clean_table.shape[1]),
+                                        size=clean_table.shape[0])
             clean_table = clr_transform(table, pseudo=prior)
             model = mixedlm(table=clean_table,
                             metadata=metadata,
