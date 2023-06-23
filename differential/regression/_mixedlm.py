@@ -236,6 +236,7 @@ class LMEModel(RegressionModel):
             reject = res[0]
 
             res = pd.DataFrame({
+                'featureid': ids,
                 'log2_fold_change': coef,
                 'pval': pval, 'qval': qval,
                 '-log10(pval)' : -logp,
