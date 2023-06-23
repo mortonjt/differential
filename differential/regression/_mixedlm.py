@@ -171,11 +171,17 @@ class LMEModel(RegressionModel):
 
     def fit(self, n_jobs=None, **kwargs):
         """ Fit the model """
+        def _fit(model, **kwargs):
+            try:
+                return model_fit(**kwargs)
+            except Exception:
+                return None
+
         # assumes that the underlying submodels have implemented `fit`.
         if None:
-            self.results = [s.fit(**kwargs) for s in self.submodels]
+            self.results = [_fit(s, **kwargs) for s in self.submodels]
         else:
-            self.results = Parallel(n_jobs=n_jobs)(delayed(s.fit)(**kwargs)
+            self.results = Parallel(n_jobs=n_jobs)(delayed(lambda s: _fit(s, **kwargs))
                                                    for s in self.submodels)
 
     def summary(self) -> pd.DataFrame:
@@ -195,20 +201,30 @@ class LMEModel(RegressionModel):
 
             ids = model.response_matrix.columns
             mr = np.arange(len(model.results))
-            converged = [model.results[i].summary().tables[0].iloc[4, 3] for i in mr]
+            converged = [model.results[i].summary().tables[0].iloc[4, 3]
+                         if model.results[i] is not None else None
+                         for i in mr]
 
             coef = np.array(
-                [model.results[i].summary().tables[1].loc[var_name]['Coef.'] for i in mr]
+                [model.results[i].summary().tables[1].loc[var_name]['Coef.']
+                 if model.results[i] is not None else None
+                 for i in mr]
             ).astype(np.float32)
-            pval = [model.results[i].summary().tables[1].loc[var_name]['P>|z|'] for i in mr]
+            pval = [model.results[i].summary().tables[1].loc[var_name]['P>|z|']
+                    if model.results[i] is not None else None
+                    for i in mr]
             pval = [None if element == '' else element for element in pval]
             pval = np.array(pval).astype(np.float32)
 
-            ci_5 = [model.results[i].summary().tables[1].loc[var_name]['[0.025'] for i in mr]
+            ci_5 = [model.results[i].summary().tables[1].loc[var_name]['[0.025']
+                    if model.results[i] is not None else None
+                    for i in mr]
             ci_5 = [None if element == '' else element for element in ci_5]
             ci_5 = np.array(ci_5).astype(np.float32)
 
-            ci_95 = [model.results[i].summary().tables[1].loc[var_name]['0.975]'] for i in mr]
+            ci_95 = [model.results[i].summary().tables[1].loc[var_name]['0.975]']
+                     if model.results[i] is not None else None
+                     for i in mr]
             ci_95 = [None if element == '' else element for element in ci_95]
             ci_95 = np.array(ci_95).astype(np.float32)
 
