@@ -178,11 +178,11 @@ class LMEModel(RegressionModel):
                 return None
 
         # assumes that the underlying submodels have implemented `fit`.
-        if None:
-            self.results = [_fit(s, **kwargs) for s in self.submodels]
-        else:
-            self.results = Parallel(n_jobs=n_jobs)(delayed(lambda s: _fit(s, **kwargs))
-                                                   for s in self.submodels)
+        #if None:
+        self.results = [_fit(s, **kwargs) for s in self.submodels]
+        # else:
+        #     self.results = Parallel(n_jobs=n_jobs)(delayed(lambda s: _fit(s, **kwargs))
+        #                                            for s in self.submodels)
 
     def summary(self) -> pd.DataFrame:
         """ Summarize the results of the linear mixed effects model.

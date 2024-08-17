@@ -12,9 +12,12 @@ from scipy.sparse.linalg import svds
 
 def clr_transform(table : biom.Table, pseudo=1):
     table = table.to_dataframe().T
-    ctable = np.log(table + pseudo)
-    ctable = ctable - ctable.mean(axis=1).values.reshape(-1, 1)
-    return ctable
+    vals = np.array(table.values)
+    idx = table.index
+    cols = table.columns
+    cvals = np.log(vals + pseudo)
+    cvals = cvals - cvals.mean(axis=1).reshape(-1, 1)
+    return pd.DataFrame(cvals, index=idx, columns=cols)
 
 
 def _welch_ttest(x1, x2):
@@ -137,13 +140,16 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
         # Q2 WTF!
         metadata = metadata.to_dataframe()
 
-    clean_table = clr_transform(table)
-
-    common_ids = clean_table.index.intersection(metadata.index)
+    common_ids = list(set(table.ids()) & set(metadata.index))
     if (len(common_ids) < len(metadata) or
-        len(common_ids) < len(clean_table)):
+        len(common_ids) < len(table.ids())):
         print("Warning: not all metadata IDs are in the table")
 
+
+    table = table.filter(common_ids)
+    metadata = metadata.loc[common_ids]
+    clean_table = clr_transform(table)
+        
     # Check to make sure spaces aren't in the clean_table columns
     def check_column_names(df):
         for column in df.columns:
@@ -153,9 +159,6 @@ def clr_lmer(table : biom.Table, metadata : pd.DataFrame,
     if not check_column_names(clean_table):
         raise ValueError("Feature names cannot contain spaces or colons")
 
-
-    metadata = metadata.loc[common_ids]
-    clean_table = clean_table.loc[common_ids]
 
     model = mixedlm(table=clean_table,
                     metadata=metadata,
