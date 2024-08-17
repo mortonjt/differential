@@ -173,8 +173,10 @@ class LMEModel(RegressionModel):
         """ Fit the model """
         def _fit(model, **kwargs):
             try:
-                return model_fit(**kwargs)
-            except Exception:
+                res = model.fit(**kwargs)
+                return res
+            except Exception as ex:
+                print(ex)
                 return None
 
         # assumes that the underlying submodels have implemented `fit`.
